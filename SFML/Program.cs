@@ -13,7 +13,7 @@ namespace Prog
     {
         public static void Main(string[] args)
         {
-            var game = new Game(new VideoMode(800, 600), "Test");
+            var game = new Game(new VideoMode(1000, 1000), "Test");
         }
     }
 
@@ -24,20 +24,22 @@ namespace Prog
         private uint Height;
         private int cellX;
         private int cellY;
+        private int Max_val;
         private Population Population { get; set; }
 
-        public static int nos = 32;
-        public static int rov = 4;
-        public static int Mapsize = 10;
+        public static int nos = 200;
+        public static int Mapsize = 50;
+        private double TimeSpid = 1;
+        public static int rov = 6;
         public Game(VideoMode mode, string title) : base(mode, title, Styles.Titlebar | Styles.Close)
         {
             window = this;
             Width = window.Size.X; Height = window.Size.Y;
             cellX = (int)(Width / Mapsize);
             cellY = (int)(Height / Mapsize);
-            new Net(8 * rov + 1, 2);
+            new Net(8 * rov + 1, 4);
             Population = new Population();
-            Population.bft = new Type();
+            Population.bft = new Type[3];
             RendDraw();
         }
         private void Iteration()
@@ -51,46 +53,40 @@ namespace Prog
                 for (int i = 0; i < Population.population.Length; i++)
                 {
                     end = Population.population[i].Move();
-                    fore_best[i] = Population.population[i].FoodEaten;
+                    fore_best[i] = Population.population[i].ball;
                 }
                 Draw(fore_best.Max());
             } while (end);
             int max_val = fore_best.Max();
-            if (Population.bft.FoodEaten < max_val)
-                Population.bft = Population.population[fore_best.ToList().IndexOf(max_val)];
+            window.SetTitle($"best: {max_val}, iteration: {Population.iteration}");
+            if (Max_val < max_val)
+            {
+                Max_val = max_val;
+                Console.WriteLine($"New best!!! iteration: {Population.iteration} best: {max_val} ");
+            }
+            var Listfore_best = fore_best.ToList();
+            int index = Listfore_best.IndexOf(max_val);
+            Population.bft[0] = Population.population[index];
+            max_val = Listfore_best.Max();
+            index = Listfore_best.IndexOf(max_val);
+            Population.bft[1] = Population.population[index];
             Population.Ress();
         }
         private void Draw(int max)
         {
             window.DispatchEvents();
             window.Clear();
-            Vertex[] linesX = new Vertex[Mapsize * 2];
-            for (int x = 0; x < Mapsize * 2 - 1; x += 2)
-            {
-                linesX[x] = new Vertex(new Vector2f(cellX / 2 * x, 0), Color.White);
-                linesX[x + 1] = new Vertex(new Vector2f(cellX / 2 * x, Height), Color.White);
-            }
-            window.Draw(linesX, PrimitiveType.Lines);
-            Vertex[] linesY = new Vertex[Mapsize * 2];
-            for (int y = 0; y < Mapsize * 2 - 1; y += 2)
-            {
-                linesY[y] = new Vertex(new Vector2f(0, cellY / 2 * y), Color.White);
-                linesY[y + 1] = new Vertex(new Vector2f(Width, cellY / 2 * y), Color.White);
-            }
-            window.Draw(linesY, PrimitiveType.Lines);
-
-
             for (int i = 0; i < Population.population.Length; i++)
             {
-                Vertex[] food = new Vertex[] { new Vertex(new Vector2f(0, 1), Color.Green),
-                                               new Vertex(new Vector2f(cellX - 1, 1), Color.Green),
-                                               new Vertex(new Vector2f(cellX - 1, cellY), Color.Green),
-                                               new Vertex(new Vector2f(0, cellY), Color.Green) };
+                Vertex[] food = new Vertex[] { new Vertex(new Vector2f(0, 1), Color.Magenta),
+                                               new Vertex(new Vector2f(cellX - 1, 1), Color.Magenta),
+                                               new Vertex(new Vector2f(cellX - 1, cellY), Color.Magenta),
+                                               new Vertex(new Vector2f(0, cellY), Color.Magenta) };
 
-                Vertex[] cube = new Vertex[] { new Vertex(new Vector2f(0, 1), Color.Red),
-                                               new Vertex(new Vector2f(cellX - 1, 1), Color.Red),
-                                               new Vertex(new Vector2f(cellX - 1, cellY), Color.Red),
-                                               new Vertex(new Vector2f(0, cellY), Color.Red) };
+                Vertex[] cube = new Vertex[] { new Vertex(new Vector2f(0, 1), Color.White),
+                                               new Vertex(new Vector2f(cellX - 1, 1), Color.White),
+                                               new Vertex(new Vector2f(cellX - 1, cellY), Color.White),
+                                               new Vertex(new Vector2f(0, cellY), Color.White) };
                 Vector2f poscube = new Vector2f((Population.population[i].Playerpos.X + Mapsize / 2) * cellX, (Population.population[i].Playerpos.Y + Mapsize / 2) * cellY);
                 Vector2f posfood = new Vector2f((Population.population[i].Foodpos.X + Mapsize / 2) * cellX, (Population.population[i].Foodpos.Y + Mapsize / 2) * cellY);
                 for (int j = 0; j < cube.Length; j++)
@@ -101,10 +97,7 @@ namespace Prog
                 window.Draw(cube, PrimitiveType.Quads);
                 window.Draw(food, PrimitiveType.Quads);
             }
-            window.SetTitle($"best: {max}");
-            if (max > 1)
-                Console.WriteLine($"iteration: {Population.iteration} best: {max} best: {Population.bft.Weights[0][0, 0]}");
-            Thread.Sleep(10);
+            Thread.Sleep((int)(100 / TimeSpid));
             window.Display();
         }
         private void RendDraw()
@@ -113,10 +106,45 @@ namespace Prog
             window.LostFocus += Window_LostFocus;
             window.GainedFocus += Window_GainedFocus;
             window.Closed += Window_Closed;
+            window.KeyPressed += Window_KeyPressed;
             while (window.IsOpen)
             {
                 Iteration();
             }
+        }
+        private void Window_KeyPressed(object? sender, KeyEventArgs e)
+        {
+            switch (e.Code)
+            {
+                case Keyboard.Key.Num1:
+                    TimeSpid = 0.1;
+                    break;
+                case Keyboard.Key.Num2:
+                    TimeSpid = 0.5;
+                    break;
+                case Keyboard.Key.Num3:
+                    TimeSpid = 1;
+                    break;
+                case Keyboard.Key.Num4:
+                    TimeSpid = 5;
+                    break;
+                case Keyboard.Key.Num5:
+                    TimeSpid = 10;
+                    break;
+                case Keyboard.Key.Num6:
+                    TimeSpid = 50;
+                    break;
+                case Keyboard.Key.Num7:
+                    TimeSpid = 100;
+                    break;
+                case Keyboard.Key.Num8:
+                    TimeSpid = 500;
+                    break;
+                case Keyboard.Key.Num9:
+                    TimeSpid = 1000;
+                    break;
+            }
+
         }
 
         private void Window_GainedFocus(object? sender, EventArgs e)
@@ -135,16 +163,19 @@ namespace Prog
         {
             window.Close();
         }
+
     }
     internal class Population
     {
         public Type[] population;
         public ulong iteration;
-        public Type bft;
-
+        public Type[] bft;
+        private Random random;
         public Population()
         {
+            bft = new Type[2];
             population = new Type[Game.nos];
+            random = new Random();
             for (int i = 0; i < population.Length; i++)
             {
                 population[i] = new Type();
@@ -154,64 +185,85 @@ namespace Prog
         {
             for (int i = 0; i < population.Length; i++)
             {
-                population[i] = new Type(bft.Mutation(bft.Weights, iteration));
+                Type type1 = bft[0];
+                Type type2 = bft[1];
+                if (random.NextDouble() > 0.5)
+                    type2 = bft[0];
+                population[i] = new Type(bft[0].Mutation(type1.Weights, type2.Weights));
             }
         }
     }
     internal class Type
     {
-        public int FoodEaten;
+        public int ball;
         private int movenumber;
         public Vector2 Playerpos;
         public Vector2 Foodpos;
         private int Mapsize;
         private Random random;
-        private int[] Inputs;
-        public decimal[][,] Weights;
+        private double[] Inputs;
+        public double[][,] Weights;
         public Type()
         {
+            random = new Random();
             Mapsize = Game.Mapsize;
-            Inputs = new int[Net.InputL];
+            Playerpos = new Vector2(random.NextInt64(-Mapsize / 2, Mapsize / 2), random.NextInt64(-Mapsize / 2, Mapsize / 2));
+            Inputs = new double[Net.InputL];
             Inputs[Inputs.Length - 1] = 1;
-            Weights = new decimal[2][,];
-            Weights[0] = new decimal[Net.HidenL, Net.InputL];
-            Weights[1] = new decimal[Net.OutputL, Net.HidenL];
+            Weights = new double[2][,];
+            Weights[0] = new double[Net.HidenL, Net.InputL];
+            Weights[1] = new double[Net.OutputL, Net.HidenL];
             for (int i = 0; i < Weights.Length; i++)
             {
                 for (int j = 0; j < Weights[i].GetLength(0); j++)
                 {
                     for (int m = 0; m < Weights[i].GetLength(1); m++)
                     {
-                        Weights[i][j, m] = 0.5m;
+                        if (random.NextDouble() < 0.5)
+                            Weights[i][j, m] = random.NextDouble();
+                        else
+                            Weights[i][j, m] = random.NextDouble() * -1;
                     }
                 }
             }
-            random = new Random();
             GanewrateFood();
         }
 
-        public Type(decimal[][,] weights)
+        public Type(double[][,] weights)
         {
-            Inputs = new int[Net.InputL];
-            Inputs[Inputs.Length - 1] = 1;
-            Mapsize = Game.Mapsize;
-            Weights = weights;
             random = new Random();
+            Mapsize = Game.Mapsize;
+            Playerpos = new Vector2(random.NextInt64(-Mapsize / 2, Mapsize / 2), random.NextInt64(-Mapsize / 2, Mapsize / 2));
+            Inputs = new double[Net.InputL];
+            Inputs[Inputs.Length - 1] = 1;
+            Weights = weights;
+
             GanewrateFood();
         }
-        public decimal[][,] Mutation(decimal[][,] weights, ulong I)
+        public double[][,] Mutation(double[][,] weights1, double[][,] weights2)
         {
-            for (int i = 0; i < weights.Length; i++)
+            var weightsnu = weights1;
+            for (int i = 0; i < weightsnu.Length; i++)
             {
                 for (int j = 0; j < Weights[i].GetLength(0); j++)
                 {
                     for (int m = 0; m < Weights[i].GetLength(1); m++)
                     {
-                        weights[i][j, m] += random.Next(-1, 1) * 0.001m;
+                        if (random.NextDouble() < 0.5)
+                        {
+                            weightsnu[i][j, m] = weights2[i][j, m];
+                        }
+                        else if (random.NextDouble() < 0.001)
+                        {
+                            if (random.NextDouble() < 0.5)
+                                weightsnu[i][j, m] = random.NextDouble();
+                            else
+                                weightsnu[i][j, m] = random.NextDouble() * -1;
+                        }
                     }
                 }
             }
-            return weights;
+            return weightsnu;
         }
         private void GanewrateFood()
         {
@@ -221,7 +273,7 @@ namespace Prog
         {
             if (Playerpos == Foodpos)
             {
-                FoodEaten++;
+                ball += 20;
                 GanewrateFood();
                 return true;
             }
@@ -230,12 +282,29 @@ namespace Prog
         public bool Move()
         {
             movenumber++;
-            if (movenumber > 25)
+            if (movenumber > 100)
                 return false;
             Vision();
+            Vector2 pos = Playerpos;
             Playerpos += Net.Next(Inputs, Weights);
+            if (Approximation(pos))
+                ball++;
+            else
+                ball--;
             Eat();
             return true;
+        }
+        private bool Approximation(Vector2 pos)
+        {
+            Vector2 vector1 = Foodpos - pos;
+            int distance1 = (int)vector1.X ^ 2 + (int)vector1.Y ^ 2;
+            Vector2 vector2 = Foodpos - Playerpos;
+            int distance2 = (int)vector2.X ^ 2 + (int)vector2.Y ^ 2;
+            if (Playerpos.X > Mapsize / 2 || Playerpos.Y > Mapsize / 2 || Playerpos.X < -Mapsize / 2 || Playerpos.Y < -Mapsize / 2)
+                ball -= 10;
+            if (distance2 < distance1)
+                return true;
+            return false;
         }
         private void Vision()
         {
@@ -255,58 +324,58 @@ namespace Prog
                 case 0:
                     inc = new Vector2(Playerpos.X, Playerpos.Y + f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 1:
                     inc = new Vector2(Playerpos.X + f, Playerpos.Y + f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 2:
                     inc = new Vector2(Playerpos.X + f, Playerpos.Y);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 3:
                     inc = new Vector2(Playerpos.X + f, Playerpos.Y - f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 4:
                     inc = new Vector2(Playerpos.X, Playerpos.Y - f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 5:
                     inc = new Vector2(Playerpos.X - f, Playerpos.Y - f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 6:
                     inc = new Vector2(Playerpos.X - f, Playerpos.Y);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
                 case 7:
                     inc = new Vector2(Playerpos.X - f, Playerpos.Y + f);
                     if (inc == Foodpos)
-                        return -1;
+                        return 10 / f;
                     if (inc.X > Mapsize / 2 || inc.Y > Mapsize / 2 || inc.X < -Mapsize / 2 || inc.Y < -Mapsize / 2)
-                        return 1;
+                        return 1 / f;
                     break;
             }
             return 0;
@@ -323,28 +392,41 @@ namespace Prog
             HidenL = (int)(InputL * 0.75);
             OutputL = outputL;
         }
-        internal static Vector2 Next(int[] inputs, decimal[][,] weights)
+        internal static Vector2 Next(double[] inputs, double[][,] weights)
         {
-            var Hiden = new Neuron[HidenL];
-            decimal[] Outputs = new decimal[HidenL];
-            for (int i = 0; i < Hiden.Length; i++)
+            double[] Outputs1 = new double[HidenL];
+            for (int i = 0; i < Outputs1.Length; i++)
             {
-                Hiden[i] = new Neuron(inputs, weights, TipeNeuron.Hiden,i);
-                Outputs[i]= Hiden[i].Output;
+                Outputs1[i] = new Neuron(inputs, weights, TipeNeuron.Hiden, i).Output;
             }
-            return new Vector2((float)Math.Round( new Neuron(Outputs, weights, TipeNeuron.Output, 0).Output), (float)Math.Round(new Neuron(Outputs, weights, TipeNeuron.Output, 1).Output));
+            double[] Outputs2 = new double[OutputL];
+            for (int i = 0; i < Outputs2.Length; i++)
+            {
+                Outputs2[i] = new Neuron(Outputs1, weights, TipeNeuron.Output, i).Output;
+            }
+            int vec = Outputs2.ToList().IndexOf(Outputs2.Max());
+            switch (vec)
+            {
+                case 0:
+                    return new Vector2(0, 1);
+                case 1:
+                    return new Vector2(1, 0);
+                case 2:
+                    return new Vector2(0, -1);
+                case 3:
+                    return new Vector2(-1, 0);
+            }
+            return new Vector2(0, 0);
         }
     }
-
     internal class Neuron
     {
-        public decimal Output { get; private set; }
+        public double Output { get; private set; }
         private TipeNeuron tipe;
-        private int[] inputs;
-        private decimal[] outputs;
-        private decimal[][,] weights;
+        private double[] inputs;
+        private double[][,] weights;
         private int I;
-        public Neuron(int[] _inputs, decimal[][,] _weights, TipeNeuron _tipe, int i)
+        public Neuron(double[] _inputs, double[][,] _weights, TipeNeuron _tipe, int i)
         {
             tipe = _tipe;
             inputs = _inputs;
@@ -352,29 +434,19 @@ namespace Prog
             I = i;
             Output = Sum();
         }
-        public Neuron(decimal[] _outputs, decimal[][,] _weights, TipeNeuron _tipe, int i)
+        private double Sum()
         {
-            tipe = _tipe;
-            outputs = _outputs;
-            weights = _weights;
-            I = i;
-            Output = Sum();
-        }
-        private decimal Sum()
-        {
-            decimal sum = 0;
+            double sum = 0;
             switch (tipe)
             {
                 case TipeNeuron.Hiden:
                     for (int l = 0; l < inputs.Length; ++l)
                         sum += inputs[l] * weights[0][I, l];//линейные
-                    return sum;
+                    return Math.Max(0, sum);
                 case TipeNeuron.Output:
-                    for (int l = 0; l < outputs.Length; ++l)
-                        sum += outputs[l] * weights[1][I, l];//линейные
-                    return (decimal)Math.Tanh((double)sum);
-                default:
-                    break;
+                    for (int l = 0; l < inputs.Length; ++l)
+                        sum += inputs[l] * weights[1][I, l];//линейные
+                    return sum;
             }
             return 0;
         }
